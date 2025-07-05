@@ -1,11 +1,7 @@
 # Containerized LAMP Application - Student Record System
 
 ## Live Application Link
-**[View Live Application](https://your-alb-dns-name.us-east-1.elb.amazonaws.com)** | **[Admin Dashboard](https://your-alb-dns-name.us-east-1.elb.amazonaws.com/admin)**
-
-## Live Demo (ROute53 DNS Link)
-**[View Live Application](https://app.yourdomain.com)** | **[Student Management System](https://app.yourdomain.com)**
-
+**[View Live Application](http://student-record-system-alb-1334382597.eu-central-1.elb.amazonaws.com)** 
 
 A modern, cloud-native Student Record System built with PHP, Apache, MySQL, and deployed on AWS ECS Fargate using Infrastructure as Code.
 
@@ -29,7 +25,6 @@ A modern, cloud-native Student Record System built with PHP, Apache, MySQL, and 
 16. [Maintenance](#maintenance)
 17. [Cost Estimation](#cost-estimation)
 18. [Contributing](#contributing)
-19. [License](#license)
 
 ---
 
@@ -147,430 +142,306 @@ containerized-lamp-application/
 
 ---
 
+## Command Line Interface (CLI - AWS CLI | ECS CLI | Copilot CLI)
+
+For command-line usage, please refer to the implementation in the [`commandline-only`](./commandline-only) folder.
+
+### Quick Start
+
+```bash
+# Navigate to the CLI implementation
+cd commandline-only
+
+
+---
+
+
 ## Architecture
 
-### 🏗️ AWS Architecture Overview
+### AWS Architecture Overview
 
 ```mermaid
 graph TB
-    %% External
-    User[👤 End Users<br/>Web Browsers] 
-    Internet{🌐 Internet}
+    User[End Users] --> Internet[Internet]
+    Internet --> Route53[Route 53 DNS]
+    Route53 --> ALB[Application Load Balancer]
     
-    %% DNS
-    Route53[🌍 Route 53<br/>DNS Service<br/>app.yourdomain.com]
-    
-    %% AWS Cloud boundary
-    subgraph AWS["☁️ AWS Cloud - US East 1"]
-        %% VPC boundary  
-        subgraph VPC["🏢 VPC (10.0.0.0/16)<br/>Student Record System"]
-            %% Internet Gateway
-            IGW[🚪 Internet Gateway<br/>Public Internet Access]
-            
-            %% Public Subnets
-            subgraph PubAZ1["📍 Public Subnet AZ-1a<br/>(10.0.1.0/24)"]
-                ALB1[⚖️ Application Load Balancer<br/>Target Group]
-                NAT1[🔀 NAT Gateway<br/>Outbound Internet<br/>Elastic IP]
+    subgraph "AWS Cloud"
+        subgraph "VPC - 10.0.0.0/16"
+            subgraph "Public Subnets"
+                ALB --> IGW[Internet Gateway]
+                NAT1[NAT Gateway AZ-1a]
+                NAT2[NAT Gateway AZ-1b]
             end
             
-            subgraph PubAZ2["📍 Public Subnet AZ-1b<br/>(10.0.2.0/24)"]
-                ALB2[⚖️ Application Load Balancer<br/>Target Group]
-                NAT2[🔀 NAT Gateway<br/>Outbound Internet<br/>Elastic IP]
-            end
-            
-            %% Private Subnets
-            subgraph PrivAZ1["🔒 Private Subnet AZ-1a<br/>(10.0.10.0/24)"]
-                ECS1[📦 ECS Fargate Task<br/>PHP + Apache Container<br/>CPU: 256, Memory: 512MB]
-                RDS1[🗄️ Aurora MySQL<br/>Writer Instance<br/>db.t3.medium]
-            end
-            
-            subgraph PrivAZ2["🔒 Private Subnet AZ-1b<br/>(10.0.20.0/24)"]
-                ECS2[📦 ECS Fargate Task<br/>PHP + Apache Container<br/>CPU: 256, Memory: 512MB]
-                RDS2[🗄️ Aurora MySQL<br/>Reader Instance<br/>db.t3.medium]
+            subgraph "Private Subnets"
+                ALB --> ECS1[ECS Fargate Task 1]
+                ALB --> ECS2[ECS Fargate Task 2]
+                ECS1 --> RDS[(Aurora MySQL Cluster)]
+                ECS2 --> RDS
+                ECS1 --> NAT1
+                ECS2 --> NAT2
             end
         end
         
-        %% Supporting Services
-        subgraph Support["🛠️ Supporting AWS Services"]
-            ECR[📚 Amazon ECR<br/>Container Registry<br/>student-record-system:latest]
-            CloudWatch[📊 CloudWatch<br/>Logs, Metrics & Alarms<br/>Custom Dashboard]
-            IAM[🔐 IAM Roles & Policies<br/>ECS Execution & Task Roles<br/>Least Privilege Access]
-            S3[💾 S3 Bucket<br/>ALB Access Logs<br/>Terraform State]
+        subgraph "Supporting Services"
+            ECR[Container Registry]
+            CloudWatch[CloudWatch Monitoring]
+            IAM[IAM Roles]
         end
     end
     
-    %% Connections
-    User --> Internet
-    Internet --> Route53
-    Route53 --> IGW
-    IGW --> ALB1
-    IGW --> ALB2
-    ALB1 --> ECS1
-    ALB2 --> ECS2
-    ECS1 --> RDS1
-    ECS2 --> RDS1
-    ECS1 --> RDS2
-    ECS2 --> RDS2
-    ECS1 --> NAT1
-    ECS2 --> NAT2
-    NAT1 --> IGW
-    NAT2 --> IGW
     ECS1 -.-> ECR
     ECS2 -.-> ECR
     ECS1 -.-> CloudWatch
     ECS2 -.-> CloudWatch
-    RDS1 -.-> CloudWatch
-    RDS2 -.-> CloudWatch
-    ALB1 -.-> S3
-    ALB2 -.-> S3
+    RDS -.-> CloudWatch
     
-    %% Styling
-    classDef aws fill:#FF9900,stroke:#FF9900,stroke-width:2px,color:#fff
-    classDef compute fill:#EC7211,stroke:#EC7211,stroke-width:2px,color:#fff
-    classDef database fill:#3334B9,stroke:#3334B9,stroke-width:2px,color:#fff
-    classDef network fill:#8C4FFF,stroke:#8C4FFF,stroke-width:2px,color:#fff
-    classDef storage fill:#569A31,stroke:#569A31,stroke-width:2px,color:#fff
-    classDef security fill:#DD344C,stroke:#DD344C,stroke-width:2px,color:#fff
-    classDef monitor fill:#759C3E,stroke:#759C3E,stroke-width:2px,color:#fff
-    classDef user fill:#232F3E,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef compute fill:#EC7211,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef database fill:#3F48CC,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef network fill:#8C4FFF,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef storage fill:#569A31,stroke:#232F3E,stroke-width:2px,color:#232F3E
     
-    class AWS,VPC aws
+    class ALB,IGW,NAT1,NAT2,Route53 network
     class ECS1,ECS2,ECR compute
-    class RDS1,RDS2 database
-    class ALB1,ALB2,IGW,NAT1,NAT2,Route53 network
-    class S3 storage
-    class IAM security
-    class CloudWatch monitor
-    class User user
+    class RDS database
+    class CloudWatch,IAM aws
 ```
 
-### 🔄 Data Flow Architecture
+### Data Flow Architecture
 
 ```mermaid
 sequenceDiagram
-    participant User as 👤 User Browser
-    participant Route53 as 🌍 Route 53 DNS
-    participant ALB as ⚖️ Application Load Balancer
-    participant ECS as 📦 ECS Fargate Container
-    participant RDS as 🗄️ Aurora MySQL Database
-    participant CloudWatch as 📊 CloudWatch Logs
+    participant User as User Browser
+    participant DNS as Route 53 DNS
+    participant ALB as Load Balancer
+    participant ECS as ECS Container
+    participant RDS as MySQL Database
+    participant Logs as CloudWatch
     
-    Note over User,CloudWatch: Student Record System - Request Flow
-    
-    User->>Route53: 1️⃣ DNS Query (app.domain.com)
-    Route53-->>User: 2️⃣ ALB IP Address Response
-    
-    User->>ALB: 3️⃣ HTTPS Request (GET /students)
-    Note over ALB: Load Balancer Health Check
-    ALB->>ECS: 4️⃣ Forward to Healthy Container
-    
-    Note over ECS: PHP Application Processing
-    ECS->>RDS: 5️⃣ SQL Query (SELECT * FROM students)
-    RDS-->>ECS: 6️⃣ Database Results (Student Records)
-    
-    Note over ECS: Generate HTML Response
-    ECS-->>ALB: 7️⃣ HTTP Response (Student List Page)
-    ALB-->>User: 8️⃣ HTTPS Response to Browser
-    
-    ECS->>CloudWatch: 9️⃣ Application Logs & Metrics
-    RDS->>CloudWatch: 🔟 Database Performance Metrics
-    ALB->>CloudWatch: 1️⃣1️⃣ Load Balancer Access Logs
-    
-    Note over User,CloudWatch: ✅ Complete Request Cycle with Monitoring
+    User->>DNS: 1. DNS Query
+    DNS-->>User: 2. IP Address
+    User->>ALB: 3. HTTP Request
+    ALB->>ECS: 4. Forward Request
+    ECS->>RDS: 5. Database Query
+    RDS-->>ECS: 6. Query Results
+    ECS-->>ALB: 7. HTTP Response
+    ALB-->>User: 8. Final Response
+    ECS->>Logs: 9. Application Logs
+    RDS->>Logs: 10. Database Metrics
 ```
 
-### 🌐 Network Security Architecture
+### Network Security Architecture
 
 ```mermaid
 graph TB
-    subgraph Internet["🌐 Internet"]
-        Users[👥 Global Users]
-        Threats[⚠️ Security Threats<br/>DDoS, Malicious Traffic]
+    subgraph "Internet"
+        Users[Global Users]
     end
     
-    subgraph AWS["☁️ AWS Cloud Security Zones"]
-        %% Edge Security
-        subgraph Edge["🛡️ Edge Security Layer"]
-            Route53[🌍 Route 53<br/>DNS Protection<br/>DDoS Mitigation]
-            WAF[🔥 AWS WAF<br/>(Optional)<br/>Web Application Firewall]
-            ACM[🔒 AWS Certificate Manager<br/>SSL/TLS Certificates<br/>HTTPS Encryption]
+    subgraph "AWS Security Layers"
+        subgraph "Edge Security"
+            Route53[Route 53 DNS Protection]
+            ACM[SSL Certificate Manager]
         end
         
-        %% VPC Security
-        subgraph VPC["🏢 VPC Security (10.0.0.0/16)"]
-            IGW[🚪 Internet Gateway<br/>Controlled Entry Point]
-            
-            %% Public Zone
-            subgraph PublicZone["🟢 Public Zone - DMZ"]
-                ALB[⚖️ Application Load Balancer<br/>SSL Termination<br/>Security Groups: ALB-SG]
-                NATGW[🔀 NAT Gateways<br/>Outbound Only Internet<br/>Elastic IPs]
-            end
-            
-            %% Private Zone
-            subgraph PrivateZone["🔒 Private Zone - Secure Backend"]
-                ECS[📦 ECS Fargate Containers<br/>Security Groups: ECS-SG<br/>No Direct Internet Access]
-                RDS[🗄️ Aurora MySQL Cluster<br/>Security Groups: RDS-SG<br/>Private Subnets Only]
-            end
+        subgraph "Network Security"
+            ALB_SG[ALB Security Group<br/>Ports: 80, 443<br/>Source: 0.0.0.0/0]
+            ECS_SG[ECS Security Group<br/>Port: 80<br/>Source: ALB Only]
+            RDS_SG[RDS Security Group<br/>Port: 3306<br/>Source: ECS Only]
         end
         
-        %% Access Control
-        subgraph AccessControl["🔐 Identity & Access Management"]
-            IAM[👤 IAM Roles & Policies<br/>Least Privilege Access<br/>No Hardcoded Credentials]
-            SecretsManager[🔑 AWS Secrets Manager<br/>(Optional)<br/>Database Credentials]
+        subgraph "Access Control"
+            IAM_Roles[IAM Roles<br/>Least Privilege Access]
+            Task_Role[ECS Task Role<br/>Application Permissions]
+            Exec_Role[ECS Execution Role<br/>Infrastructure Permissions]
         end
         
-        %% Monitoring
-        subgraph Monitoring["📊 Security Monitoring"]
-            CloudTrail[🕵️ AWS CloudTrail<br/>API Call Logging<br/>Audit Trail]
-            CloudWatch[📈 CloudWatch<br/>Security Metrics<br/>Anomaly Detection]
-            GuardDuty[🛡️ Amazon GuardDuty<br/>(Optional)<br/>Threat Detection]
+        subgraph "Data Protection"
+            VPC_Isolation[VPC Network Isolation]
+            Private_Subnets[Private Subnets<br/>No Internet Access]
+            Encryption[Data Encryption<br/>At Rest and In Transit]
         end
     end
     
-    %% Traffic Flow
     Users --> Route53
-    Threats -.-> Route53
-    Route53 --> WAF
-    WAF --> ACM
-    ACM --> IGW
-    IGW --> ALB
-    ALB --> ECS
-    ECS --> RDS
-    ECS --> NATGW
-    NATGW --> IGW
+    Route53 --> ACM
+    ACM --> ALB_SG
+    ALB_SG --> ECS_SG
+    ECS_SG --> RDS_SG
     
-    %% Security Controls
-    IAM -.-> ECS
-    IAM -.-> RDS
-    SecretsManager -.-> ECS
-    CloudTrail -.-> IAM
-    CloudWatch -.-> ECS
-    CloudWatch -.-> RDS
-    CloudWatch -.-> ALB
-    GuardDuty -.-> VPC
+    IAM_Roles --> Task_Role
+    IAM_Roles --> Exec_Role
     
-    %% Styling
-    classDef internet fill:#FFE6E6,stroke:#FF6B6B,stroke-width:2px
-    classDef edge fill:#E6F3FF,stroke:#4A90E2,stroke-width:2px
-    classDef public fill:#E6FFE6,stroke:#4CAF50,stroke-width:2px
-    classDef private fill:#FFF3E6,stroke:#FF9800,stroke-width:2px
-    classDef security fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px
-    classDef monitoring fill:#E8F5E8,stroke:#2E7D32,stroke-width:2px
-    classDef threat fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px
+    VPC_Isolation --> Private_Subnets
+    Private_Subnets --> Encryption
     
-    class Internet,Users internet
-    class Threats threat
-    class Edge,Route53,WAF,ACM edge
-    class PublicZone,ALB,NATGW public
-    class PrivateZone,ECS,RDS private
-    class AccessControl,IAM,SecretsManager security
-    class Monitoring,CloudTrail,CloudWatch,GuardDuty monitoring
+    classDef security fill:#DD344C,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef network fill:#8C4FFF,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef access fill:#4A90E2,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef data fill:#569A31,stroke:#232F3E,stroke-width:2px,color:#fff
+    
+    class Route53,ACM security
+    class ALB_SG,ECS_SG,RDS_SG network
+    class IAM_Roles,Task_Role,Exec_Role access
+    class VPC_Isolation,Private_Subnets,Encryption data
 ```
 
-### 🏗️ Infrastructure Components Diagram
+### Infrastructure Components
 
 ```mermaid
 graph TB
-    %% Terraform Organization
-    subgraph Terraform["🏗️ Infrastructure as Code - Terraform"]
-        subgraph Core["📋 Core Configuration"]
-            MainTF[📄 main.tf<br/>Root Module<br/>VPC, Subnets, Gateways]
-            VarsTF[⚙️ variables.tf<br/>Input Parameters<br/>Customizable Settings]
-            OutputsTF[📤 outputs.tf<br/>Export Values<br/>URLs, Endpoints]
+    subgraph "Terraform Infrastructure"
+        subgraph "Core Configuration"
+            Main[main.tf<br/>Root Module]
+            Variables[variables.tf<br/>Input Parameters]
+            Outputs[outputs.tf<br/>Export Values]
         end
         
-        subgraph Modules["📦 Modular Components"]
-            ECRMod[📚 ECR Module<br/>Container Registry<br/>Lifecycle Policies]
-            IAMMod[🔐 IAM Module<br/>Roles & Policies<br/>Security Permissions]
-            RDSMod[🗄️ RDS Module<br/>Aurora MySQL Cluster<br/>Multi-AZ Setup]
-            ALBMod[⚖️ ALB Module<br/>Load Balancer<br/>Target Groups & Listeners]
-            ECSMod[📦 ECS Module<br/>Fargate Service<br/>Auto Scaling Policies]
-            Route53Mod[🌍 Route53 Module<br/>DNS Management<br/>Health Checks]
+        subgraph "Terraform Modules"
+            ECR_Mod[ECR Module<br/>Container Registry]
+            IAM_Mod[IAM Module<br/>Roles and Policies]
+            RDS_Mod[RDS Module<br/>Aurora MySQL]
+            ALB_Mod[ALB Module<br/>Load Balancer]
+            ECS_Mod[ECS Module<br/>Fargate Service]
+            Route53_Mod[Route53 Module<br/>DNS Management]
         end
     end
     
-    %% AWS Resources Created
-    subgraph AWSResources["☁️ AWS Resources Deployed"]
-        subgraph Networking["🌐 Networking (15+ Resources)"]
-            VPCRes[🏢 VPC<br/>10.0.0.0/16<br/>DNS Resolution Enabled]
-            SubnetsRes[📍 Subnets (4)<br/>2 Public + 2 Private<br/>Multi-AZ Distribution]
-            RouteTablesRes[🗺️ Route Tables (3)<br/>Public + Private Routes<br/>Internet & NAT Gateway]
-            SecurityGroupsRes[🛡️ Security Groups (3)<br/>ALB-SG, ECS-SG, RDS-SG<br/>Least Privilege Rules]
-            NATGWRes[🔀 NAT Gateways (2)<br/>High Availability<br/>Elastic IP Addresses]
-            IGWRes[🚪 Internet Gateway<br/>Public Internet Access<br/>Route 0.0.0.0/0]
+    subgraph "AWS Resources"
+        subgraph "Networking"
+            VPC[VPC 10.0.0.0/16]
+            Subnets[4 Subnets<br/>2 Public + 2 Private]
+            RouteTable[Route Tables<br/>Internet and NAT Routes]
+            SecurityGroups[Security Groups<br/>ALB, ECS, RDS]
+            NATGW[NAT Gateways<br/>High Availability]
+            IGW[Internet Gateway]
         end
         
-        subgraph Compute["💻 Compute (8+ Resources)"]
-            ECSClusterRes[🎯 ECS Cluster<br/>Fargate Capacity Provider<br/>Container Insights Enabled]
-            ECSServiceRes[📦 ECS Service<br/>Desired Count: 2<br/>Auto Scaling Enabled]
-            TaskDefRes[📋 Task Definition<br/>CPU: 256, Memory: 512MB<br/>Environment Variables]
-            ALBRes[⚖️ Application Load Balancer<br/>Internet-Facing<br/>Multi-AZ Distribution]
-            TargetGroupRes[🎯 Target Group<br/>Health Check: /<br/>Protocol: HTTP]
-            ListenersRes[👂 ALB Listeners<br/>HTTP (80) + HTTPS (443)<br/>SSL Termination]
+        subgraph "Compute"
+            ECS_Cluster[ECS Cluster<br/>Fargate Provider]
+            ECS_Service[ECS Service<br/>Auto Scaling Enabled]
+            TaskDef[Task Definition<br/>Container Configuration]
+            ALB_Resource[Application Load Balancer<br/>Multi-AZ]
+            TargetGroup[Target Group<br/>Health Checks]
         end
         
-        subgraph Data["🗄️ Data & Storage (6+ Resources)"]
-            AuroraClusterRes[🌟 Aurora MySQL Cluster<br/>Engine: 8.0.mysql_aurora<br/>Multi-AZ Enabled]
-            AuroraInstanceRes[💾 Aurora Instance<br/>db.t3.medium<br/>Auto Scaling Storage]
-            DBSubnetGroupRes[📂 DB Subnet Group<br/>Private Subnets<br/>Cross-AZ Redundancy]
-            ECRRepoRes[📚 ECR Repository<br/>Image Scanning Enabled<br/>Lifecycle Policies]
+        subgraph "Database"
+            Aurora_Cluster[Aurora MySQL Cluster<br/>Multi-AZ Setup]
+            Aurora_Instance[Aurora Instance<br/>db.t3.medium]
+            DB_SubnetGroup[DB Subnet Group<br/>Private Subnets]
         end
         
-        subgraph Security["🔐 Security (5+ Resources)"]
-            IAMRolesRes[👤 IAM Roles (2)<br/>ECS Execution + Task Roles<br/>Least Privilege Policies]
-            IAMPoliciesRes[📜 IAM Policies<br/>ECR, CloudWatch Access<br/>Custom Permissions]
+        subgraph "Registry"
+            ECR_Repo[ECR Repository<br/>Container Images]
         end
         
-        subgraph Monitoring["📊 Monitoring (4+ Resources)"]
-            CloudWatchLogsRes[📋 CloudWatch Log Groups<br/>Application + Database Logs<br/>7-Day Retention]
-            CloudWatchAlarmsRes[🚨 CloudWatch Alarms<br/>CPU, Memory, Error Rate<br/>Auto Scaling Triggers]
-        end
-        
-        subgraph DNS["🌍 DNS (Optional)"]
-            Route53RecordRes[📍 Route53 A Record<br/>app.yourdomain.com<br/>ALB Alias]
+        subgraph "Monitoring"
+            CloudWatch_Logs[CloudWatch Log Groups]
+            CloudWatch_Alarms[CloudWatch Alarms]
         end
     end
     
-    %% Connections
-    MainTF --> VPCRes
-    MainTF --> SubnetsRes
-    MainTF --> RouteTablesRes
-    MainTF --> IGWRes
-    MainTF --> NATGWRes
+    Main --> VPC
+    Main --> Subnets
+    Main --> RouteTable
     
-    ECRMod --> ECRRepoRes
-    IAMMod --> IAMRolesRes
-    IAMMod --> IAMPoliciesRes
-    RDSMod --> AuroraClusterRes
-    RDSMod --> AuroraInstanceRes
-    RDSMod --> DBSubnetGroupRes
-    ALBMod --> ALBRes
-    ALBMod --> TargetGroupRes
-    ALBMod --> ListenersRes
-    ALBMod --> SecurityGroupsRes
-    ECSMod --> ECSClusterRes
-    ECSMod --> ECSServiceRes
-    ECSMod --> TaskDefRes
-    ECSMod --> CloudWatchLogsRes
-    ECSMod --> CloudWatchAlarmsRes
-    Route53Mod --> Route53RecordRes
+    ECR_Mod --> ECR_Repo
+    IAM_Mod --> SecurityGroups
+    RDS_Mod --> Aurora_Cluster
+    RDS_Mod --> Aurora_Instance
+    ALB_Mod --> ALB_Resource
+    ALB_Mod --> TargetGroup
+    ECS_Mod --> ECS_Cluster
+    ECS_Mod --> ECS_Service
+    ECS_Mod --> TaskDef
+    ECS_Mod --> CloudWatch_Logs
+    Route53_Mod --> RouteTable
     
-    %% Styling
-    classDef terraform fill:#623CE4,stroke:#623CE4,stroke-width:2px,color:#fff
-    classDef aws fill:#FF9900,stroke:#FF9900,stroke-width:2px,color:#fff
-    classDef networking fill:#8C4FFF,stroke:#8C4FFF,stroke-width:2px,color:#fff
-    classDef compute fill:#EC7211,stroke:#EC7211,stroke-width:2px,color:#fff
-    classDef data fill:#3334B9,stroke:#3334B9,stroke-width:2px,color:#fff
-    classDef security fill:#DD344C,stroke:#DD344C,stroke-width:2px,color:#fff
-    classDef monitoring fill:#759C3E,stroke:#759C3E,stroke-width:2px,color:#fff
-    classDef dns fill:#4B72D9,stroke:#4B72D9,stroke-width:2px,color:#fff
+    classDef terraform fill:#623CE4,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef networking fill:#8C4FFF,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef compute fill:#EC7211,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef database fill:#3F48CC,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef registry fill:#569A31,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef monitoring fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#232F3E
     
-    class Terraform,Core,Modules,MainTF,VarsTF,OutputsTF terraform
-    class ECRMod,IAMMod,RDSMod,ALBMod,ECSMod,Route53Mod terraform
-    class AWSResources aws
-    class Networking,VPCRes,SubnetsRes,RouteTablesRes,SecurityGroupsRes,NATGWRes,IGWRes networking
-    class Compute,ECSClusterRes,ECSServiceRes,TaskDefRes,ALBRes,TargetGroupRes,ListenersRes compute
-    class Data,AuroraClusterRes,AuroraInstanceRes,DBSubnetGroupRes,ECRRepoRes data
-    class Security,IAMRolesRes,IAMPoliciesRes security
-    class Monitoring,CloudWatchLogsRes,CloudWatchAlarmsRes monitoring
-    class DNS,Route53RecordRes dns
+    class Main,Variables,Outputs,ECR_Mod,IAM_Mod,RDS_Mod,ALB_Mod,ECS_Mod,Route53_Mod terraform
+    class VPC,Subnets,RouteTable,SecurityGroups,NATGW,IGW networking
+    class ECS_Cluster,ECS_Service,TaskDef,ALB_Resource,TargetGroup compute
+    class Aurora_Cluster,Aurora_Instance,DB_SubnetGroup database
+    class ECR_Repo registry
+    class CloudWatch_Logs,CloudWatch_Alarms monitoring
 ```
 
-### 📈 Auto Scaling & High Availability Design
+### Auto Scaling and High Availability
 
 ```mermaid
 graph TB
-    subgraph Scaling["🔄 Auto Scaling Architecture"]
-        subgraph Triggers["📊 Scaling Triggers"]
-            CPUAlarm[🔥 CPU Utilization > 70%<br/>Average over 5 minutes<br/>Scale Out Trigger]
-            MemoryAlarm[💾 Memory Utilization > 80%<br/>Average over 5 minutes<br/>Scale Out Trigger]
-            RequestAlarm[📈 Request Count<br/>Requests per second<br/>Custom Metric Trigger]
-        end
-        
-        subgraph AutoScaling["⚖️ Auto Scaling Policies"]
-            ScaleOut[📈 Scale Out Policy<br/>Add 1 Task<br/>Cooldown: 300 seconds]
-            ScaleIn[📉 Scale In Policy<br/>Remove 1 Task<br/>Cooldown: 300 seconds]
-            TargetTracking[🎯 Target Tracking Policy<br/>Maintain 70% CPU<br/>Automatic Adjustment]
-        end
-        
-        subgraph Capacity["📦 ECS Service Capacity"]
-            MinCapacity[🔻 Minimum Capacity: 1<br/>Always Running<br/>Cost Optimization]
-            DesiredCapacity[⚡ Desired Capacity: 2<br/>Normal Operations<br/>Load Distribution]
-            MaxCapacity[🔺 Maximum Capacity: 10<br/>Peak Load Handling<br/>Burst Scaling]
-        end
-        
-        subgraph HealthChecks["🏥 Health Monitoring"]
-            ELBHealth[⚖️ ELB Health Checks<br/>HTTP GET /<br/>30 second intervals]
-            ECSHealth[📦 ECS Health Checks<br/>Container Status<br/>Task Replacement]
-            RDSHealth[🗄️ RDS Health Checks<br/>Database Availability<br/>Automatic Failover]
-        end
-        
-        subgraph LoadDistribution["🌐 Load Distribution"]
-            MultiAZ[🏢 Multi-AZ Deployment<br/>us-east-1a + us-east-1b<br/>Fault Tolerance]
-            ALBRouting[⚖️ ALB Routing<br/>Round Robin<br/>Sticky Sessions: Disabled]
-            FailureRecovery[🔄 Automatic Recovery<br/>Failed Task Replacement<br/>Zero Downtime]
-        end
+    subgraph "Auto Scaling Triggers"
+        CPU[CPU Utilization > 70%]
+        Memory[Memory Utilization > 80%]
+        RequestCount[High Request Count]
     end
     
-    subgraph Availability["🛡️ High Availability Design"]
-        subgraph FaultTolerance["⚡ Fault Tolerance"]
-            AZFailure[🏢 AZ Failure Scenario<br/>Automatic Traffic Redirect<br/>Remaining AZ Handling]
-            TaskFailure[📦 Task Failure Scenario<br/>ECS Auto Replacement<br/>Health Check Recovery]
-            DBFailover[🗄️ Database Failover<br/>Aurora Auto Failover<br/>< 1 minute RTO]
-        end
-        
-        subgraph BackupStrategy["💾 Backup & Recovery"]
-            DatabaseBackup[🗄️ Database Backups<br/>7-day retention<br/>Point-in-time recovery]
-            ContainerBackup[📦 Container Images<br/>ECR Repository<br/>Image versioning]
-            ConfigBackup[⚙️ Configuration Backup<br/>Terraform State<br/>S3 Backend]
-        end
-        
-        subgraph DisasterRecovery["🚨 Disaster Recovery"]
-            RPO[📅 RPO: < 1 hour<br/>Recovery Point Objective<br/>Maximum Data Loss]
-            RTO[⏰ RTO: < 15 minutes<br/>Recovery Time Objective<br/>Maximum Downtime]
-            CrossRegion[🌍 Cross-Region Option<br/>Future Enhancement<br/>Global Resilience]
-        end
+    subgraph "Scaling Policies"
+        ScaleOut[Scale Out Policy<br/>Add Tasks]
+        ScaleIn[Scale In Policy<br/>Remove Tasks]
+        TargetTracking[Target Tracking<br/>Maintain 70% CPU]
     end
     
-    %% Trigger Connections
-    CPUAlarm --> ScaleOut
-    MemoryAlarm --> ScaleOut
-    RequestAlarm --> ScaleOut
+    subgraph "ECS Service Capacity"
+        MinCapacity[Minimum: 1 Task]
+        DesiredCapacity[Desired: 2 Tasks]
+        MaxCapacity[Maximum: 10 Tasks]
+    end
     
-    %% Scaling Connections
+    subgraph "Health Monitoring"
+        ALB_Health[ALB Health Checks<br/>HTTP GET /]
+        ECS_Health[ECS Health Checks<br/>Container Status]
+        RDS_Health[RDS Health Checks<br/>Database Availability]
+    end
+    
+    subgraph "High Availability"
+        MultiAZ[Multi-AZ Deployment<br/>us-east-1a + us-east-1b]
+        ALB_Routing[ALB Load Distribution<br/>Round Robin]
+        AutoRecovery[Automatic Recovery<br/>Failed Task Replacement]
+    end
+    
+    subgraph "Backup Strategy"
+        DB_Backup[Database Backups<br/>7-day Retention]
+        Container_Backup[Container Images<br/>ECR Versioning]
+        Config_Backup[Infrastructure Backup<br/>Terraform State]
+    end
+    
+    CPU --> ScaleOut
+    Memory --> ScaleOut
+    RequestCount --> ScaleOut
+    
     ScaleOut --> MaxCapacity
     ScaleIn --> MinCapacity
     TargetTracking --> DesiredCapacity
     
-    %% Health Check Connections
-    ELBHealth --> FailureRecovery
-    ECSHealth --> TaskFailure
-    RDSHealth --> DBFailover
+    ALB_Health --> AutoRecovery
+    ECS_Health --> AutoRecovery
+    RDS_Health --> AutoRecovery
     
-    %% Availability Connections
-    MultiAZ --> AZFailure
-    ALBRouting --> TaskFailure
-    DatabaseBackup --> DBFailover
-    ContainerBackup --> TaskFailure
+    MultiAZ --> ALB_Routing
+    ALB_Routing --> AutoRecovery
     
-    %% Styling
-    classDef trigger fill:#FF6B6B,stroke:#FF6B6B,stroke-width:2px,color:#fff
-    classDef scaling fill:#4ECDC4,stroke:#4ECDC4,stroke-width:2px,color:#fff
-    classDef capacity fill:#45B7D1,stroke:#45B7D1,stroke-width:2px,color:#fff
-    classDef health fill:#96CEB4,stroke:#96CEB4,stroke-width:2px,color:#fff
-    classDef distribution fill:#FFEAA7,stroke:#FDCB6E,stroke-width:2px,color:#333
-    classDef fault fill:#A29BFE,stroke:#A29BFE,stroke-width:2px,color:#fff
-    classDef backup fill:#6C5CE7,stroke:#6C5CE7,stroke-width:2px,color:#fff
-    classDef recovery fill:#FD79A8,stroke:#FD79A8,stroke-width:2px,color:#fff
+    classDef trigger fill:#FF6B6B,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef scaling fill:#4ECDC4,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef capacity fill:#45B7D1,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef health fill:#96CEB4,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef availability fill:#FFEAA7,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef backup fill:#A29BFE,stroke:#232F3E,stroke-width:2px,color:#232F3E
     
-    class Triggers,CPUAlarm,MemoryAlarm,RequestAlarm trigger
-    class AutoScaling,ScaleOut,ScaleIn,TargetTracking scaling
-    class Capacity,MinCapacity,DesiredCapacity,MaxCapacity capacity
-    class HealthChecks,ELBHealth,ECSHealth,RDSHealth health
-    class LoadDistribution,MultiAZ,ALBRouting,FailureRecovery distribution
-    class FaultTolerance,AZFailure,TaskFailure,DBFailover fault
-    class BackupStrategy,DatabaseBackup,ContainerBackup,ConfigBackup backup
-    class DisasterRecovery,RPO,RTO,CrossRegion recovery
+    class CPU,Memory,RequestCount trigger
+    class ScaleOut,ScaleIn,TargetTracking scaling
+    class MinCapacity,DesiredCapacity,MaxCapacity capacity
+    class ALB_Health,ECS_Health,RDS_Health health
+    class MultiAZ,ALB_Routing,AutoRecovery availability
+    class DB_Backup,Container_Backup,Config_Backup backup
 ```
 
 ---
@@ -913,94 +784,80 @@ ssl_certificate_arn = "arn:aws:acm:..."
 
 ## Monitoring and Logging
 
-### 📊 CloudWatch Monitoring Dashboard
+### CloudWatch Monitoring Dashboard
 
 ```mermaid
 graph TB
-    subgraph Dashboard["📊 CloudWatch Dashboard - Student Record System"]
-        subgraph ECSMetrics["📦 ECS Container Metrics"]
-            CPUWidget[📈 CPU Utilization<br/>Real-time percentage<br/>Threshold: 70%]
-            MemoryWidget[💾 Memory Utilization<br/>Real-time percentage<br/>Threshold: 80%]
-            TaskCountWidget[📋 Running Tasks<br/>Current vs Desired<br/>Auto Scaling Status]
-            NetworkWidget[🌐 Network I/O<br/>Bytes In/Out<br/>Connection Metrics]
+    subgraph "CloudWatch Dashboard"
+        subgraph "ECS Metrics"
+            CPU_Widget[CPU Utilization<br/>Real-time Percentage<br/>Threshold: 70%]
+            Memory_Widget[Memory Utilization<br/>Real-time Percentage<br/>Threshold: 80%]
+            TaskCount_Widget[Running Tasks<br/>Current vs Desired<br/>Auto Scaling Status]
         end
         
-        subgraph ALBMetrics["⚖️ Load Balancer Metrics"]
-            RequestCountWidget[📊 Request Count<br/>Requests per minute<br/>Traffic Patterns]
-            ResponseTimeWidget[⏱️ Response Time<br/>Average latency<br/>Performance Tracking]
-            ErrorRateWidget[🚨 Error Rate<br/>4XX and 5XX errors<br/>Application Health]
-            TargetHealthWidget[🎯 Target Health<br/>Healthy vs Unhealthy<br/>Availability Status]
+        subgraph "ALB Metrics"
+            RequestCount_Widget[Request Count<br/>Requests per Minute<br/>Traffic Patterns]
+            ResponseTime_Widget[Response Time<br/>Average Latency<br/>Performance Tracking]
+            ErrorRate_Widget[Error Rate<br/>4XX and 5XX Errors<br/>Application Health]
         end
         
-        subgraph RDSMetrics["🗄️ Database Metrics"]
-            DBCPUWidget[🔥 Database CPU<br/>Aurora MySQL CPU<br/>Performance Monitoring]
-            ConnectionsWidget[🔗 DB Connections<br/>Active connections<br/>Connection Pool Status]
-            IOPSWidget[💽 Database IOPS<br/>Read/Write operations<br/>Storage Performance]
-            ReplicationWidget[🔄 Replication Lag<br/>Writer to Reader lag<br/>Data Consistency]
+        subgraph "RDS Metrics"
+            DB_CPU_Widget[Database CPU<br/>Aurora MySQL CPU<br/>Performance Monitoring]
+            Connections_Widget[DB Connections<br/>Active Connections<br/>Connection Pool Status]
+            IOPS_Widget[Database IOPS<br/>Read/Write Operations<br/>Storage Performance]
         end
         
-        subgraph LogsSection["📋 Application Logs"]
-            AppLogsWidget[📝 Application Logs<br/>Recent entries<br/>Error filtering]
-            DBLogsWidget[🗄️ Database Logs<br/>Query logs<br/>Slow query analysis]
-            ALBLogsWidget[⚖️ Access Logs<br/>Request patterns<br/>Client analysis]
+        subgraph "Application Logs"
+            App_Logs[Application Logs<br/>Recent Entries<br/>Error Filtering]
+            DB_Logs[Database Logs<br/>Query Logs<br/>Slow Query Analysis]
+            ALB_Logs[Access Logs<br/>Request Patterns<br/>Client Analysis]
         end
         
-        subgraph AlertsSection["🚨 Active Alerts"]
-            HighCPUAlert[🔥 High CPU Alert<br/>Status: OK/ALARM<br/>Threshold: 70%]
-            HighMemoryAlert[💾 High Memory Alert<br/>Status: OK/ALARM<br/>Threshold: 80%]
-            DatabaseAlert[🗄️ Database Alert<br/>Connection failures<br/>Availability issues]
-            ErrorRateAlert[❌ Error Rate Alert<br/>5XX error threshold<br/>Application issues]
+        subgraph "Active Alerts"
+            HighCPU_Alert[High CPU Alert<br/>Status: OK/ALARM<br/>Threshold: 70%]
+            HighMemory_Alert[High Memory Alert<br/>Status: OK/ALARM<br/>Threshold: 80%]
+            Database_Alert[Database Alert<br/>Connection Failures<br/>Availability Issues]
         end
     end
     
-    subgraph Alarms["🔔 CloudWatch Alarms Configuration"]
-        subgraph ComputeAlarms["💻 Compute Alarms"]
-            CPUAlarm[🔥 ECS CPU > 70%<br/>Period: 5 minutes<br/>Evaluation: 2 periods]
-            MemoryAlarm[💾 ECS Memory > 80%<br/>Period: 5 minutes<br/>Evaluation: 2 periods]
-            TaskCountAlarm[📦 Task Count < Desired<br/>Period: 1 minute<br/>Immediate alert]
+    subgraph "CloudWatch Alarms"
+        subgraph "Compute Alarms"
+            CPU_Alarm[ECS CPU > 70%<br/>Period: 5 minutes<br/>Evaluation: 2 periods]
+            Memory_Alarm[ECS Memory > 80%<br/>Period: 5 minutes<br/>Evaluation: 2 periods]
         end
         
-        subgraph ApplicationAlarms["🌐 Application Alarms"]
-            HTTP5XXAlarm[❌ ALB 5XX > 10<br/>Period: 5 minutes<br/>Service degradation]
-            ResponseTimeAlarm[⏱️ Response Time > 2s<br/>Period: 5 minutes<br/>Performance issue]
-            UnhealthyTargetsAlarm[🎯 Unhealthy Targets > 0<br/>Period: 1 minute<br/>Immediate alert]
+        subgraph "Application Alarms"
+            HTTP5XX_Alarm[ALB 5XX > 10<br/>Period: 5 minutes<br/>Service Degradation]
+            ResponseTime_Alarm[Response Time > 2s<br/>Period: 5 minutes<br/>Performance Issue]
         end
         
-        subgraph DatabaseAlarms["🗄️ Database Alarms"]
-            DBCPUAlarm[🔥 RDS CPU > 80%<br/>Period: 5 minutes<br/>Database overload]
-            DBConnectionAlarm[🔗 DB Connections > 80<br/>Period: 5 minutes<br/>Connection limit]
-            DBAvailabilityAlarm[💔 Database Unavailable<br/>Period: 1 minute<br/>Critical alert]
+        subgraph "Database Alarms"
+            DB_CPU_Alarm[RDS CPU > 80%<br/>Period: 5 minutes<br/>Database Overload]
+            DB_Connection_Alarm[DB Connections > 80<br/>Period: 5 minutes<br/>Connection Limit]
         end
     end
     
-    %% Widget Connections
-    CPUWidget -.-> CPUAlarm
-    MemoryWidget -.-> MemoryAlarm
-    TaskCountWidget -.-> TaskCountAlarm
-    ErrorRateWidget -.-> HTTP5XXAlarm
-    ResponseTimeWidget -.-> ResponseTimeAlarm
-    TargetHealthWidget -.-> UnhealthyTargetsAlarm
-    DBCPUWidget -.-> DBCPUAlarm
-    ConnectionsWidget -.-> DBConnectionAlarm
+    CPU_Widget -.-> CPU_Alarm
+    Memory_Widget -.-> Memory_Alarm
+    ErrorRate_Widget -.-> HTTP5XX_Alarm
+    ResponseTime_Widget -.-> ResponseTime_Alarm
+    DB_CPU_Widget -.-> DB_CPU_Alarm
+    Connections_Widget -.-> DB_Connection_Alarm
     
-    %% Alert Status Connections
-    CPUAlarm -.-> HighCPUAlert
-    MemoryAlarm -.-> HighMemoryAlert
-    DBAvailabilityAlarm -.-> DatabaseAlert
-    HTTP5XXAlarm -.-> ErrorRateAlert
+    CPU_Alarm -.-> HighCPU_Alert
+    Memory_Alarm -.-> HighMemory_Alert
+    DB_CPU_Alarm -.-> Database_Alert
     
-    %% Styling
-    classDef dashboard fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
-    classDef metrics fill:#E8F5E8,stroke:#388E3C,stroke-width:2px
-    classDef logs fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
-    classDef alerts fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px
-    classDef alarms fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    classDef dashboard fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#232F3E
+    classDef metrics fill:#E8F5E8,stroke:#388E3C,stroke-width:2px,color:#232F3E
+    classDef logs fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#232F3E
+    classDef alerts fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#fff
+    classDef alarms fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#fff
     
-    class Dashboard dashboard
-    class ECSMetrics,ALBMetrics,RDSMetrics,CPUWidget,MemoryWidget,TaskCountWidget,NetworkWidget,RequestCountWidget,ResponseTimeWidget,ErrorRateWidget,TargetHealthWidget,DBCPUWidget,ConnectionsWidget,IOPSWidget,ReplicationWidget metrics
-    class LogsSection,AppLogsWidget,DBLogsWidget,ALBLogsWidget logs
-    class AlertsSection,HighCPUAlert,HighMemoryAlert,DatabaseAlert,ErrorRateAlert alerts
-    class Alarms,ComputeAlarms,ApplicationAlarms,DatabaseAlarms,CPUAlarm,MemoryAlarm,TaskCountAlarm,HTTP5XXAlarm,ResponseTimeAlarm,UnhealthyTargetsAlarm,DBCPUAlarm,DBConnectionAlarm,DBAvailabilityAlarm alarms
+    class CPU_Widget,Memory_Widget,TaskCount_Widget,RequestCount_Widget,ResponseTime_Widget,ErrorRate_Widget,DB_CPU_Widget,Connections_Widget,IOPS_Widget metrics
+    class App_Logs,DB_Logs,ALB_Logs logs
+    class HighCPU_Alert,HighMemory_Alert,Database_Alert alerts
+    class CPU_Alarm,Memory_Alarm,HTTP5XX_Alarm,ResponseTime_Alarm,DB_CPU_Alarm,DB_Connection_Alarm alarms
 ```
 
 ### Setting Up Monitoring
@@ -1040,121 +897,70 @@ aws logs filter-log-events \
 
 ## Security
 
-### 🛡️ Comprehensive Security Framework
+### Multi-Layer Security Framework
 
 ```mermaid
 graph TB
-    subgraph SecurityFramework["🛡️ Multi-Layer Security Framework"]
-        subgraph Layer1["🌐 Layer 1: Edge & Network Security"]
-            DNSSecurity[🌍 DNS Security<br/>Route 53 Protection<br/>DDoS Mitigation]
-            WAFProtection[🔥 Web Application Firewall<br/>AWS WAF (Optional)<br/>OWASP Top 10 Protection]
-            SSLTermination[🔒 SSL/TLS Termination<br/>AWS Certificate Manager<br/>HTTPS Encryption]
-            VPCIsolation[🏢 VPC Network Isolation<br/>10.0.0.0/16 CIDR<br/>Private/Public Separation]
-        end
-        
-        subgraph Layer2["🔐 Layer 2: Access Control & Identity"]
-            IAMRoles[👤 IAM Roles & Policies<br/>Least Privilege Access<br/>No Hardcoded Credentials]
-            ServiceRoles[⚙️ Service-Specific Roles<br/>ECS Execution & Task Roles<br/>Cross-Service Permissions]
-            SecretsManagement[🔑 Secrets Management<br/>Environment Variables<br/>AWS Secrets Manager (Optional)]
-            NetworkACLs[📋 Network ACLs<br/>Subnet-Level Filtering<br/>Defense in Depth]
-        end
-        
-        subgraph Layer3["🏗️ Layer 3: Infrastructure Security"]
-            SecurityGroups[🛡️ Security Groups<br/>Stateful Firewall Rules<br/>Minimal Required Access]
-            PrivateSubnets[🔒 Private Subnets<br/>No Direct Internet Access<br/>NAT Gateway Routing]
-            EncryptionAtRest[💾 Encryption at Rest<br/>Aurora MySQL Encryption<br/>EBS Volume Encryption]
-            EncryptionInTransit[🔄 Encryption in Transit<br/>TLS 1.2+ Only<br/>Database SSL Connections]
-        end
-        
-        subgraph Layer4["📦 Layer 4: Application Security"]
-            ContainerSecurity[📦 Container Security<br/>Base Image Scanning<br/>Runtime Protection]
-            InputValidation[✅ Input Validation<br/>SQL Injection Prevention<br/>XSS Protection]
-            OutputEncoding[🔒 Output Encoding<br/>Data Sanitization<br/>CSRF Protection]
-            SessionSecurity[🍪 Session Security<br/>Secure Cookie Settings<br/>Session Management]
-        end
-        
-        subgraph Layer5["👁️ Layer 5: Monitoring & Compliance"]
-            ActivityLogging[📋 Activity Logging<br/>CloudTrail API Logs<br/>Application Access Logs]
-            SecurityMonitoring[👁️ Security Monitoring<br/>CloudWatch Security Metrics<br/>Anomaly Detection]
-            VulnerabilityScanning[🔍 Vulnerability Scanning<br/>ECR Image Scanning<br/>Security Assessment]
-            ComplianceAuditing[📊 Compliance Auditing<br/>Security Best Practices<br/>Regular Reviews]
-        end
+    subgraph "Layer 1: Edge and Network Security"
+        DNS_Security[Route 53 DNS Protection<br/>DDoS Mitigation]
+        WAF_Protection[AWS WAF Optional<br/>OWASP Top 10 Protection]
+        SSL_Termination[SSL/TLS Termination<br/>AWS Certificate Manager<br/>HTTPS Encryption]
+        VPC_Isolation[VPC Network Isolation<br/>10.0.0.0/16 CIDR<br/>Private/Public Separation]
     end
     
-    subgraph SecurityControls["⚙️ Security Controls Implementation"]
-        subgraph NetworkControls["🌐 Network Security Controls"]
-            ALBSecurityGroup[⚖️ ALB Security Group<br/>Ports: 80, 443<br/>Source: 0.0.0.0/0]
-            ECSSecurityGroup[📦 ECS Security Group<br/>Port: 80<br/>Source: ALB-SG Only]
-            RDSSecurityGroup[🗄️ RDS Security Group<br/>Port: 3306<br/>Source: ECS-SG Only]
-            NATGatewayEgress[🔀 NAT Gateway Egress<br/>Outbound Internet Only<br/>No Inbound Access]
-        end
-        
-        subgraph AccessControls["🔐 Access Control Matrix"]
-            ECSExecutionRole[⚙️ ECS Execution Role<br/>• ECR Image Pull<br/>• CloudWatch Logs<br/>• Task Definition Access]
-            ECSTaskRole[📦 ECS Task Role<br/>• Application Logs<br/>• AWS Service Access<br/>• Resource Permissions]
-            DatabaseAccess[🗄️ Database Access<br/>• Application User Only<br/>• Limited Privileges<br/>• No Admin Access]
-        end
-        
-        subgraph DataProtection["💾 Data Protection Controls"]
-            DatabaseEncryption[🔒 Aurora Encryption<br/>AES-256 Encryption<br/>KMS Key Management]
-            BackupEncryption[💾 Backup Encryption<br/>Encrypted Snapshots<br/>Point-in-Time Recovery]
-            LogEncryption[📋 Log Encryption<br/>CloudWatch Logs<br/>Data Classification]
-        end
+    subgraph "Layer 2: Access Control and Identity"
+        IAM_Roles[IAM Roles and Policies<br/>Least Privilege Access<br/>No Hardcoded Credentials]
+        Service_Roles[Service-Specific Roles<br/>ECS Execution and Task Roles<br/>Cross-Service Permissions]
+        Secrets_Management[Secrets Management<br/>Environment Variables<br/>AWS Secrets Manager Optional]
     end
     
-    %% Layer Connections
-    DNSSecurity --> WAFProtection
-    WAFProtection --> SSLTermination
-    SSLTermination --> VPCIsolation
+    subgraph "Layer 3: Infrastructure Security"
+        Security_Groups[Security Groups<br/>Stateful Firewall Rules<br/>Minimal Required Access]
+        Private_Subnets[Private Subnets<br/>No Direct Internet Access<br/>NAT Gateway Routing]
+        Encryption_Rest[Encryption at Rest<br/>Aurora MySQL Encryption<br/>EBS Volume Encryption]
+        Encryption_Transit[Encryption in Transit<br/>TLS 1.2+ Only<br/>Database SSL Connections]
+    end
     
-    IAMRoles --> ServiceRoles
-    ServiceRoles --> SecretsManagement
-    SecretsManagement --> NetworkACLs
+    subgraph "Layer 4: Application Security"
+        Container_Security[Container Security<br/>Base Image Scanning<br/>Runtime Protection]
+        Input_Validation[Input Validation<br/>SQL Injection Prevention<br/>XSS Protection]
+        Output_Encoding[Output Encoding<br/>Data Sanitization<br/>CSRF Protection]
+    end
     
-    SecurityGroups --> PrivateSubnets
-    PrivateSubnets --> EncryptionAtRest
-    EncryptionAtRest --> EncryptionInTransit
+    subgraph "Layer 5: Monitoring and Compliance"
+        Activity_Logging[Activity Logging<br/>CloudTrail API Logs<br/>Application Access Logs]
+        Security_Monitoring[Security Monitoring<br/>CloudWatch Security Metrics<br/>Anomaly Detection]
+        Vulnerability_Scanning[Vulnerability Scanning<br/>ECR Image Scanning<br/>Security Assessment]
+    end
     
-    ContainerSecurity --> InputValidation
-    InputValidation --> OutputEncoding
-    OutputEncoding --> SessionSecurity
+    DNS_Security --> WAF_Protection
+    WAF_Protection --> SSL_Termination
+    SSL_Termination --> VPC_Isolation
     
-    ActivityLogging --> SecurityMonitoring
-    SecurityMonitoring --> VulnerabilityScanning
-    VulnerabilityScanning --> ComplianceAuditing
+    IAM_Roles --> Service_Roles
+    Service_Roles --> Secrets_Management
     
-    %% Control Connections
-    VPCIsolation -.-> ALBSecurityGroup
-    ALBSecurityGroup -.-> ECSSecurityGroup
-    ECSSecurityGroup -.-> RDSSecurityGroup
-    PrivateSubnets -.-> NATGatewayEgress
+    Security_Groups --> Private_Subnets
+    Private_Subnets --> Encryption_Rest
+    Encryption_Rest --> Encryption_Transit
     
-    IAMRoles -.-> ECSExecutionRole
-    ServiceRoles -.-> ECSTaskRole
-    SecretsManagement -.-> DatabaseAccess
+    Container_Security --> Input_Validation
+    Input_Validation --> Output_Encoding
     
-    EncryptionAtRest -.-> DatabaseEncryption
-    EncryptionAtRest -.-> BackupEncryption
-    ActivityLogging -.-> LogEncryption
+    Activity_Logging --> Security_Monitoring
+    Security_Monitoring --> Vulnerability_Scanning
     
-    %% Styling
-    classDef layer1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
-    classDef layer2 fill:#E8F5E8,stroke:#388E3C,stroke-width:2px
-    classDef layer3 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
-    classDef layer4 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
-    classDef layer5 fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px
-    classDef network fill:#E1F5FE,stroke:#0277BD,stroke-width:2px
-    classDef access fill:#E8F5E8,stroke:#2E7D32,stroke-width:2px
-    classDef data fill:#FFF8E1,stroke:#F9A825,stroke-width:2px
+    classDef layer1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#232F3E
+    classDef layer2 fill:#E8F5E8,stroke:#388E3C,stroke-width:2px,color:#232F3E
+    classDef layer3 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#232F3E
+    classDef layer4 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#232F3E
+    classDef layer5 fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#fff
     
-    class Layer1,DNSSecurity,WAFProtection,SSLTermination,VPCIsolation layer1
-    class Layer2,IAMRoles,ServiceRoles,SecretsManagement,NetworkACLs layer2
-    class Layer3,SecurityGroups,PrivateSubnets,EncryptionAtRest,EncryptionInTransit layer3
-    class Layer4,ContainerSecurity,InputValidation,OutputEncoding,SessionSecurity layer4
-    class Layer5,ActivityLogging,SecurityMonitoring,VulnerabilityScanning,ComplianceAuditing layer5
-    class NetworkControls,ALBSecurityGroup,ECSSecurityGroup,RDSSecurityGroup,NATGatewayEgress network
-    class AccessControls,ECSExecutionRole,ECSTaskRole,DatabaseAccess access
-    class DataProtection,DatabaseEncryption,BackupEncryption,LogEncryption data
+    class DNS_Security,WAF_Protection,SSL_Termination,VPC_Isolation layer1
+    class IAM_Roles,Service_Roles,Secrets_Management layer2
+    class Security_Groups,Private_Subnets,Encryption_Rest,Encryption_Transit layer3
+    class Container_Security,Input_Validation,Output_Encoding layer4
+    class Activity_Logging,Security_Monitoring,Vulnerability_Scanning layer5
 ```
 
 ### Security Groups Configuration
@@ -1515,98 +1321,95 @@ terraform apply
 
 ## Cost Estimation
 
-### 💰 Monthly AWS Cost Analysis
+### Monthly AWS Cost Analysis
 
 ```mermaid
 graph TB
-    subgraph CostBreakdown["💰 Monthly Cost Breakdown"]
-        subgraph ComputeCosts["💻 Compute Services"]
-            ECSFargate[📦 ECS Fargate<br/>2 Tasks × 24/7<br/>$15-20/month]
-            AutoScaling[📈 Auto Scaling<br/>Variable load<br/>$5-10/month]
+    subgraph "Monthly Cost Breakdown"
+        subgraph "Compute Services"
+            ECS_Fargate[ECS Fargate<br/>2 Tasks x 24/7<br/>15-20 USD/month]
+            Auto_Scaling[Auto Scaling<br/>Variable Load<br/>5-10 USD/month]
         end
         
-        subgraph DatabaseCosts["🗄️ Database Services"]
-            AuroraMySQL[🌟 Aurora MySQL<br/>db.t3.medium × 1<br/>$25-35/month]
-            DatabaseStorage[💾 Storage & I/O<br/>Auto-scaling storage<br/>$5-10/month]
-            BackupStorage[💾 Backup Storage<br/>7-day retention<br/>$2-5/month]
+        subgraph "Database Services"
+            Aurora_MySQL[Aurora MySQL<br/>db.t3.medium x 1<br/>25-35 USD/month]
+            Database_Storage[Storage and I/O<br/>Auto-scaling Storage<br/>5-10 USD/month]
+            Backup_Storage[Backup Storage<br/>7-day Retention<br/>2-5 USD/month]
         end
         
-        subgraph NetworkingCosts["🌐 Networking Services"]
-            ApplicationLB[⚖️ Application Load Balancer<br/>Always running<br/>$16/month]
-            NATGateways[🔀 NAT Gateways<br/>2 × Multi-AZ<br/>$32/month]
-            DataTransfer[📡 Data Transfer<br/>Internet egress<br/>$5-10/month]
+        subgraph "Networking Services"
+            Application_LB[Application Load Balancer<br/>Always Running<br/>16 USD/month]
+            NAT_Gateways[NAT Gateways<br/>2 x Multi-AZ<br/>32 USD/month]
+            Data_Transfer[Data Transfer<br/>Internet Egress<br/>5-10 USD/month]
         end
         
-        subgraph SupportingCosts["🛠️ Supporting Services"]
-            ECRRepository[📚 ECR Repository<br/>Image storage<br/>$1-3/month]
-            CloudWatchLogs[📋 CloudWatch Logs<br/>Log ingestion<br/>$2-5/month]
-            Route53[🌍 Route 53<br/>DNS queries (optional)<br/>$1-2/month]
+        subgraph "Supporting Services"
+            ECR_Repository[ECR Repository<br/>Image Storage<br/>1-3 USD/month]
+            CloudWatch_Logs[CloudWatch Logs<br/>Log Ingestion<br/>2-5 USD/month]
+            Route53_DNS[Route 53<br/>DNS Queries Optional<br/>1-2 USD/month]
         end
         
-        subgraph TotalCosts["💵 Total Monthly Cost"]
-            BaselineCost[📊 Baseline Cost<br/>Minimum usage<br/>$105/month]
-            TypicalCost[📊 Typical Cost<br/>Normal usage<br/>$115/month]
-            PeakCost[📊 Peak Cost<br/>High traffic<br/>$131/month]
+        subgraph "Total Monthly Cost"
+            Baseline_Cost[Baseline Cost<br/>Minimum Usage<br/>105 USD/month]
+            Typical_Cost[Typical Cost<br/>Normal Usage<br/>115 USD/month]
+            Peak_Cost[Peak Cost<br/>High Traffic<br/>131 USD/month]
         end
     end
     
-    subgraph OptimizationOptions["🎯 Cost Optimization Strategies"]
-        subgraph ImmediateOptimizations["⚡ Immediate Savings"]
-            SingleNAT[🔀 Single NAT Gateway<br/>Reduce redundancy<br/>Save $16/month]
-            SpotInstances[💫 Fargate Spot<br/>Development env only<br/>Save 70% on compute]
-            ScheduledScaling[⏰ Scheduled Scaling<br/>Scale down off-hours<br/>Save $5-10/month]
+    subgraph "Cost Optimization Strategies"
+        subgraph "Immediate Savings"
+            Single_NAT[Single NAT Gateway<br/>Reduce Redundancy<br/>Save 16 USD/month]
+            Spot_Instances[Fargate Spot<br/>Development Only<br/>Save 70% on Compute]
+            Scheduled_Scaling[Scheduled Scaling<br/>Scale Down Off-hours<br/>Save 5-10 USD/month]
         end
         
-        subgraph MediumTermOptimizations["📅 Medium-term Savings"]
-            AuroraServerless[🌟 Aurora Serverless v2<br/>Pay per use<br/>Save 20-50% variable load]
-            ReservedCapacity[🎫 Reserved Instances<br/>1-year commitment<br/>Save 30-60%]
-            DataTransferOptimization[📡 CloudFront CDN<br/>Reduce data transfer<br/>Save $3-8/month]
+        subgraph "Medium-term Savings"
+            Aurora_Serverless[Aurora Serverless v2<br/>Pay per Use<br/>Save 20-50% Variable Load]
+            Reserved_Capacity[Reserved Instances<br/>1-year Commitment<br/>Save 30-60%]
+            Data_Transfer_Optimization[CloudFront CDN<br/>Reduce Data Transfer<br/>Save 3-8 USD/month]
         end
         
-        subgraph LongTermOptimizations["🏆 Long-term Savings"]
-            SavingsPlans[💰 AWS Savings Plans<br/>Flexible commitment<br/>Save 20-72%]
-            CrossRegionOptimization[🌍 Region Optimization<br/>Lower cost regions<br/>Save 10-30%]
-            ResourceRightSizing[📏 Right-sizing<br/>Optimize resources<br/>Save 15-25%]
+        subgraph "Long-term Savings"
+            Savings_Plans[AWS Savings Plans<br/>Flexible Commitment<br/>Save 20-72%]
+            Cross_Region_Optimization[Region Optimization<br/>Lower Cost Regions<br/>Save 10-30%]
+            Resource_Right_Sizing[Right-sizing<br/>Optimize Resources<br/>Save 15-25%]
         end
     end
     
-    %% Cost Flow Connections
-    ECSFargate --> BaselineCost
-    AutoScaling --> TypicalCost
-    AuroraMySQL --> BaselineCost
-    DatabaseStorage --> TypicalCost
-    ApplicationLB --> BaselineCost
-    NATGateways --> BaselineCost
-    DataTransfer --> PeakCost
-    ECRRepository --> BaselineCost
-    CloudWatchLogs --> TypicalCost
+    ECS_Fargate --> Baseline_Cost
+    Auto_Scaling --> Typical_Cost
+    Aurora_MySQL --> Baseline_Cost
+    Database_Storage --> Typical_Cost
+    Application_LB --> Baseline_Cost
+    NAT_Gateways --> Baseline_Cost
+    Data_Transfer --> Peak_Cost
+    ECR_Repository --> Baseline_Cost
+    CloudWatch_Logs --> Typical_Cost
     
-    %% Optimization Connections
-    SingleNAT -.-> NATGateways
-    SpotInstances -.-> ECSFargate
-    ScheduledScaling -.-> AutoScaling
-    AuroraServerless -.-> AuroraMySQL
-    ReservedCapacity -.-> ECSFargate
-    DataTransferOptimization -.-> DataTransfer
+    Single_NAT -.-> NAT_Gateways
+    Spot_Instances -.-> ECS_Fargate
+    Scheduled_Scaling -.-> Auto_Scaling
+    Aurora_Serverless -.-> Aurora_MySQL
+    Reserved_Capacity -.-> ECS_Fargate
+    Data_Transfer_Optimization -.-> Data_Transfer
     
-    %% Styling
-    classDef compute fill:#EC7211,stroke:#EC7211,stroke-width:2px,color:#fff
-    classDef database fill:#3334B9,stroke:#3334B9,stroke-width:2px,color:#fff
-    classDef networking fill:#8C4FFF,stroke:#8C4FFF,stroke-width:2px,color:#fff
-    classDef supporting fill:#569A31,stroke:#569A31,stroke-width:2px,color:#fff
-    classDef totals fill:#FF9900,stroke:#FF9900,stroke-width:2px,color:#fff
-    classDef immediate fill:#4CAF50,stroke:#4CAF50,stroke-width:2px,color:#fff
-    classDef medium fill:#FF9800,stroke:#FF9800,stroke-width:2px,color:#fff
-    classDef longterm fill:#9C27B0,stroke:#9C27B0,stroke-width:2px,color:#fff
+    classDef compute fill:#EC7211,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef database fill:#3F48CC,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef networking fill:#8C4FFF,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef supporting fill:#569A31,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef totals fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef immediate fill:#4CAF50,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef medium fill:#FF9800,stroke:#232F3E,stroke-width:2px,color:#232F3E
+    classDef longterm fill:#9C27B0,stroke:#232F3E,stroke-width:2px,color:#fff
     
-    class ComputeCosts,ECSFargate,AutoScaling compute
-    class DatabaseCosts,AuroraMySQL,DatabaseStorage,BackupStorage database
-    class NetworkingCosts,ApplicationLB,NATGateways,DataTransfer networking
-    class SupportingCosts,ECRRepository,CloudWatchLogs,Route53 supporting
-    class TotalCosts,BaselineCost,TypicalCost,PeakCost totals
-    class ImmediateOptimizations,SingleNAT,SpotInstances,ScheduledScaling immediate
-    class MediumTermOptimizations,AuroraServerless,ReservedCapacity,DataTransferOptimization medium
-    class LongTermOptimizations,SavingsPlans,CrossRegionOptimization,ResourceRightSizing longterm
+    class ECS_Fargate,Auto_Scaling compute
+    class Aurora_MySQL,Database_Storage,Backup_Storage database
+    class Application_LB,NAT_Gateways,Data_Transfer networking
+    class ECR_Repository,CloudWatch_Logs,Route53_DNS supporting
+    class Baseline_Cost,Typical_Cost,Peak_Cost totals
+    class Single_NAT,Spot_Instances,Scheduled_Scaling immediate
+    class Aurora_Serverless,Reserved_Capacity,Data_Transfer_Optimization medium
+    class Savings_Plans,Cross_Region_Optimization,Resource_Right_Sizing longterm
 ```
 
 ### Cost Monitoring
@@ -1700,4 +1503,3 @@ tfsec .
 - Advanced monitoring with X-Ray tracing
 
 ---
-

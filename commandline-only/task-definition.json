@@ -1,0 +1,48 @@
+{
+  "family": "student-record-system",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::216989132235:role/student-record-system-ecs-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::216989132235:role/student-record-system-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "student-record-system",
+      "image": "216989132235.dkr.ecr.eu-central-1.amazonaws.com/student-record-system:latest",
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DB_HOST",
+          "value": "student-record-system-aurora-cluster.cluster-cl0wq2yqoi39.eu-central-1.rds.amazonaws.com"
+        },
+        {
+          "name": "DB_USER",
+          "value": "admin"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "value": "SecurePassword123!"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "student_db"
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/aws/ecs/student-record-system",
+          "awslogs-region": "eu-central-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
