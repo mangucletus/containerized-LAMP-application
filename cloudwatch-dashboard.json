@@ -1,0 +1,116 @@
+
+
+{
+    "widgets": [
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [
+                        "AWS/ECS",
+                        "CPUUtilization",
+                        "ServiceName",
+                        "student-record-system-service",
+                        "ClusterName",
+                        "student-record-system-cluster"
+                    ],
+                    [
+                        ".",
+                        "MemoryUtilization",
+                        ".",
+                        ".",
+                        ".",
+                        "."
+                    ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "us-east-1",
+                "title": "ECS Service Metrics",
+                "period": 300,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 0,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [
+                        "AWS/ApplicationELB",
+                        "RequestCount",
+                        "LoadBalancer",
+                        "app/student-record-system-alb"
+                    ],
+                    [
+                        ".",
+                        "HTTPCode_Target_2XX_Count",
+                        ".",
+                        "."
+                    ],
+                    [
+                        ".",
+                        "HTTPCode_Target_5XX_Count",
+                        ".",
+                        "."
+                    ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "us-east-1",
+                "title": "ALB Request Metrics",
+                "period": 300,
+                "stat": "Sum"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 6,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [
+                        "AWS/RDS",
+                        "CPUUtilization",
+                        "DBClusterIdentifier",
+                        "student-record-system-aurora-cluster"
+                    ],
+                    [
+                        ".",
+                        "DatabaseConnections",
+                        ".",
+                        "."
+                    ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "us-east-1",
+                "title": "RDS Cluster Metrics",
+                "period": 300,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "log",
+            "x": 12,
+            "y": 6,
+            "width": 12,
+            "height": 6,
+            "properties": {
+                "query": "SOURCE '/aws/ecs/student-record-system'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 20",
+                "region": "us-east-1",
+                "title": "Recent Application Errors",
+                "view": "table"
+            }
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+# terraform/terraform.tfvars.example
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Project Configuration
+project_name = "student-record-system"
+environment  = "dev"
+
+# Network Configuration
+vpc_cidr               = "10.0.0.0/16"
+public_subnet_cidrs    = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs   = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# Database Configuration
+db_username = "admin"
+db_password = "YourSecurePassword123!"
+db_name     = "student_db"
+
+# Domain Configuration (optional)
+domain_name         = "example.com"
+subdomain          = "app"
+ssl_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+
+# ECS Configuration
+desired_count  = 2
+cpu           = 256
+memory        = 512
+container_port = 80
